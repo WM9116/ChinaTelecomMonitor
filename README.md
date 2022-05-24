@@ -1,6 +1,6 @@
 # ChinaTelecomMonitor 
 
-#声明：Fork的LambdaExpression大佬的项目，仅自用。请进入https://github.com/LambdaExpression/ChinaTelecomMonitor/支持。
+#声明：Fork的LambdaExpression大佬的项目，仅自用。请进入https://github.com/LambdaExpression/ChinaTelecomMonitor/ 支持。
 
 **中国电信 手机话费、流量、语音通话监控**
 
