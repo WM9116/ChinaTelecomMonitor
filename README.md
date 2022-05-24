@@ -1,4 +1,7 @@
 # ChinaTelecomMonitor 
+
+#声明：Fork的LambdaExpression大佬的项目，仅自用。请进入https://github.com/LambdaExpression/ChinaTelecomMonitor/支持。
+
 **中国电信 手机话费、流量、语音通话监控**
 
 本工具是部署在服务器(或x86软路由等设备) 使用 docker [lambdaexpression/headless-shell-utf-8](https://hub.docker.com/r/lambdaexpression/headless-shell-utf-8) 进行模拟浏览器登录获取cookie，按需定时获取电信手机话费、流量、语音通话使用情况，通过接口返回数据。
