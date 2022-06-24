@@ -17,9 +17,19 @@ import (
 	"time"
 )
 
+var Version = "v1.0.5"
+var GoVersion = "not set"
+var GitCommit = "not set"
+var BuildTime = "not set"
+
 func main() {
 
 	initFlag()
+	if configs.PrintVersion {
+		version()
+		return
+	}
+
 	initLogger()
 
 	if checkFlag() {
@@ -52,9 +62,16 @@ func initFlag() {
 	flag.StringVar(&configs.DataPath, "dataPath", "./data", "--dataPath ./data # 数据日志文件保存路径")
 
 	flag.BoolVar(&configs.Dev, "dev", false, "--dev false # 开发模式,开启后将支持以下接口： /refresh 手动更新流量，/loginLog 查看登录截图日志")
+	flag.BoolVar(&configs.PrintVersion, "version", false, "打印程序构建版本")
 
 	flag.Parse()
+}
 
+func version() {
+	fmt.Printf("Version: %s\n", Version)
+	fmt.Printf("Go Version: %s\n", GoVersion)
+	fmt.Printf("Git Commit: %s\n", GitCommit)
+	fmt.Printf("Build Time: %s\n", BuildTime)
 }
 
 func checkFlag() bool {
@@ -163,7 +180,8 @@ func cronSummary() {
 	t := carbon.Now()
 	detailRequest := tools.GetFlowDetail(true)
 	balance := tools.GetBalance(true)
-	configs.Summary = tools.ToSummary(detailRequest, balance, configs.Username, t)
+	flowPackage := tools.GetFlowPackage(true)
+	configs.Summary = tools.ToSummary2(detailRequest, flowPackage, balance, configs.Username, t)
 }
 
 // 初始化访问接口
@@ -172,6 +190,7 @@ func initIris() {
 	irisApp.Use(middleware)
 	irisApp.Handle(iris.MethodGet, "/show/flow", flow)
 	irisApp.Handle(iris.MethodGet, "/show/detail", packageDetail)
+	irisApp.Handle(iris.MethodGet, "/show/flowPackage", flowPackage)
 	if configs.Dev {
 		irisApp.Handle(iris.MethodGet, "/refresh", refresh)
 		irisApp.Handle(iris.MethodGet, "/image/{filename:string}", image)
@@ -188,17 +207,17 @@ func middleware(ctx iris.Context) {
 	ctx.Next()
 }
 
-var lastTime carbon.Carbon
+var flowLastTime carbon.Carbon
 
 // 获取流量信息接口
 func flow(ctx iris.Context) {
 
-	if carbon.Now().Lt(lastTime.AddSeconds(configs.IntervalsTime)) {
+	if carbon.Now().Lt(flowLastTime.AddSeconds(configs.IntervalsTime)) {
 		ctx.JSON(iris.Map{"code": 200, "data": desensitization(configs.Summary)})
 		return
 	}
 
-	lastTime = carbon.Now()
+	flowLastTime = carbon.Now()
 
 	t := carbon.Now()
 	detailRequest := tools.GetFlowDetail(false)
@@ -206,22 +225,37 @@ func flow(ctx iris.Context) {
 		go cronSummary()
 	} else {
 		balance := tools.GetBalance(true)
-		configs.Summary = tools.ToSummary(detailRequest, balance, configs.Username, t)
+		flowPackage := tools.GetFlowPackage(true)
+		configs.Summary = tools.ToSummary2(detailRequest, flowPackage, balance, configs.Username, t)
 	}
 	summary := desensitization(configs.Summary)
 	ctx.JSON(iris.Map{"code": 200, "data": summary})
 }
 
 var packageDetailVisitLastTime carbon.Carbon
-var packageDetailDetailRequest models.DetailRequest
+var packageDetailDetailRequest *models.DetailRequest
 
 func packageDetail(ctx iris.Context) {
 	if carbon.Now().Lt(packageDetailVisitLastTime.AddSeconds(configs.IntervalsTime)) {
-		ctx.JSON(packageDetailDetailRequest)
+		ctx.JSON(&packageDetailDetailRequest)
 		return
 	}
-	packageDetailDetailRequest := tools.GetFlowDetail(false)
-	ctx.JSON(packageDetailDetailRequest)
+	packageDetailDetailRequest = tools.GetFlowDetail(false)
+	packageDetailVisitLastTime = carbon.Now()
+	ctx.JSON(&packageDetailDetailRequest)
+}
+
+var flowPackageVisitLastTime carbon.Carbon
+var flowPackageDetailRequest *models.FlowPackage
+
+func flowPackage(ctx iris.Context) {
+	if carbon.Now().Lt(flowPackageVisitLastTime.AddSeconds(configs.IntervalsTime)) {
+		ctx.JSON(&flowPackageDetailRequest)
+		return
+	}
+	flowPackageDetailRequest = tools.GetFlowPackage(false)
+	flowPackageVisitLastTime = carbon.Now()
+	ctx.JSON(&flowPackageDetailRequest)
 }
 
 func desensitization(summary models.Summary) models.Summary {
